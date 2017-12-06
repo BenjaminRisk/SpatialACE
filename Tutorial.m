@@ -9,15 +9,22 @@
 %   geodesic distance via the great circle formula.
 %
 % Questions or comments:
-%     email Ben at benjamin.risk@gmail.com
+%     email Ben at benjamin.risk@emory.edu
 %--------------------------------------------------------
 
 % These simulations examine different estimates of the covariance
 % matrix 
+
+% REVISE to match your directory structure:
 cd ~/Dropbox/SpatialACDE/Package
+
+
 addpath './Functions'
 
-% covariance matrices created in SimulateSpatialACE.m:
+% covariance matrices constructed from covariance functions with spherical harmonics:
+% 	covariance matrices constructed in <SimulateSpatialACE.m>, which uses
+%	other scripts from Matlab central and is not provide here. Contact
+%	benjamin.risk@emory.edu for additional information.
 load './SupportingDataFiles/CovarianceMatricesForSimulationsSharmACEM.mat'
 
 
@@ -25,9 +32,12 @@ load './SupportingDataFiles/CovarianceMatricesForSimulationsSharmACEM.mat'
 depthLabels = {'S-SW','PSD-SW','S-FSEM','PSD-FSEM','PSD-ACE','PSD-ACE-O','MLE','SMLE','MWLE'};
 nVertex = length(Lat);
 
-rng(999,'twister')
+rng(111,'twister')
 
 %% Simulate data:
+% simulate data for 100 MZ pairs, 100 DZ pairs, 200 singletons
+% NOTE: sigmaem corresponds to measurement error, i.e., \sigma_{e,L}^2 in
+% manuscript. 
 simdata = simulatedataACEM(100,100,200,betas,sigmaa,sigmac,sigmaeg,sigmaem);
 
 %% Estimate Spatial ACE:
@@ -56,10 +66,10 @@ line([8,8],[0,16],'col','red')
 % plot(log(outfull_sw.valSA(1:40)))
 % choose rank; err on the SMALLER rank, but results are robust either way.     
 mydA = 8; % 8 is a number chosen based on averaging screeplots from hundreds of simulations;
-          % you can vary this number and see the results usually do not change very
+          % you can vary this number and see the results do not change very
           % much. Larger values tend to add a little bias. 
 
-%generate esimates of rank of common environmental covariance:
+%generate estimates of rank of common environmental covariance:
 subplot(2,2,2)
 plot(outfull_sw.valSC(1:40))
 line([6,6],[0,15],'col','red')
@@ -73,21 +83,23 @@ line([6,6],[0,25],'col','red')
 mydE = 6; %unique environmental clearly 6
         
     
-%% STEP 6: Estimate covariance functions under 
+%% STEP 6: Estimate covariance functions
 gditer = 5000;
 tic;
 outfull_psd_estrank = fullcovacem_con(smmle.smresid,estsigmaem.sigmasqem,mydA,mydC,mydE,simdata.familyst,...
             Lat,Long,outfull_sw.hvecmin,gditer,outfull_sw);
 toc
-% Takes about 15 seconds to run.
-% if you receive lots of message about "Decreasing lambda", this sometimes occurs even though
-% the algorithm has adequately converged. The parameters in fullcovacem_con
-% are relatively conservative.
-% If message output ``Size relative to initial gradient'', you can judge whether
-% the gradient is small enough.
-% Increasing rank of bases can improve convergence. 
+% Takes about 30 seconds to run.
 
 outfull_psd_truerank = fullcovacem_con(smmle.smresid,smmle.smsigmasqe,5,5,6,simdata.familyst,Lat,Long,outfull_sw.hvecmin,gditer,outfull_sw);
+% You may receive many messages about "Decreasing lambda." This sometimes occurs even though
+% the algorithm has adequately converged. The parameters in fullcovacem_con
+% are relatively conservative.
+% If you receive " Warning: size of gradient increased for vanishingly small lambda." Look at the message output 
+% ``Size relative to initial gradient'', and you can judge whether
+% the gradient is small enough. Size = ||current gradient|| / ||initial gradient||
+% Increasing rank of bases can improve convergence. 
+
 
 
 %% OPTIONAL: 
@@ -97,7 +109,7 @@ select100 = zeros(nVertex,1);temp = randsample(nVertex,100);select100(temp) = 1;
 bw_cv5 = cv_ROI_mwle_ACE(mleresults,select100,[8:2:20],Lat,Long,simdata.familyst,false);  
 mwleresults = allvertexmwle_ACE(mleresults,bw_cv5.hvecmin,Lat,Long,simdata.familyst,false);
 
-%SL's estimator using bw from above:
+%Luo et al. estimator using bw from above:
 outsl = fullcovacem_sl_symm(smmle.smresid,simdata.familyst,Lat,Long,outfull_sw.hvecmin);
 
 
