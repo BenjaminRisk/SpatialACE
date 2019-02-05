@@ -1,8 +1,6 @@
 function [f] = wtdloglik_ACE(log_sigmaA, sumSM, sumXM, sumSD, sumXD, sumSMD, sumwts, n1, n2, n3)
 
-% Benjamin Risk
-% 4 October 2015
-% Loosely based on Shikai Luo FSEM_wlla 
+% Loosely based on BLINDED FSEM_wlla 
 % Calculate wtd loglik of variance components given residuals
 % Most of my changes are efficiency improvements to prevent recalculating
 % wtd residual sums for the same set of distances, etc. This function is designed to be

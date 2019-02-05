@@ -1,12 +1,13 @@
-function [out] = fullcovacem_sandwich(R,sigmaem,familyst,lat,long,h,tol,outfull,bwonly)
-%FULLCOVACEM_SANDWICH calculates a decomposition of the smoothed VxV covariance matrices
-%   for the additive genetic, common environmental, and unique environmental variance components. 
+function [out] = fullcovace_sandwich(R,sigmae,familyst,lat,long,h,tol,outfull,bwonly)
+%FULLCOVACE_SANDWICH calculates a decomposition of the smoothed VxV covariance matrices
+%   for the additive and common environmental variance components. 
 %   This function is memory intensive because it constructs the full V x V residual matrix for intermediate 
 %   calculations and thus will not work for massive datasets. 
-%
+%   6 July 2016: Note: With the updated weighting approach, we can't smooth
+%   post truncation. 
 %INPUT:
 % R: N x V matrix; residual matrix
-% sigmaem: estimated MEASUREMENT ERROR; used in correction of S0
+% sigmae: estimated measurement error from mle; used in correction of S0
 % familyst.MZtp1
 % familyst.MZtp2
 % familyst.DZtp1
@@ -26,7 +27,6 @@ function [out] = fullcovacem_sandwich(R,sigmaem,familyst,lat,long,h,tol,outfull,
 %OUTPUT:
 % svecSA: V x d matrix of eigenvectors for the additive genetic component, where d <= N
 % svalSA: d x d matrix of associated positive eigenvalues
-% svalSEg
 % svecSC: V x d matrix of eigenvectors for the common environmental
 %           component
 % svalSC: d x d matrix of associated eigenvalues
@@ -36,21 +36,14 @@ function [out] = fullcovacem_sandwich(R,sigmaem,familyst,lat,long,h,tol,outfull,
 % 
 % smSA_symm
 % smSC_symm
-% smSEg_symm
 % smSA_psd
 % smSC_psd
-% smSEg_psd
-
 if nargin<9
     bwonly=false;
 end
     
 if nargin<8
     outfull=true;
-end
-
-if nargin<7
-    tol=1e-03;
 end
 
 % create raw covariance estimates:
@@ -71,81 +64,70 @@ R2 = R21'*R22;
 S2 = (R2 + R2')./2/n2;
 clear R21 R22 R2;
 
-% get initial estimate of the unique environmental variance:
 S0 = R'*R./N;
-S0 = S0 - diag(sigmaem);
+S0 = S0 - diag(sigmae);
 
 %% Calculate SA and SC matrix for cross-validation:
+%SA = S0plusS1 - 2*S2 +diag(diag(S1));
+%SC = 2*S2 - 0.5*S0plusS1 - 0.5*diag(diag(S1));
 
-SA = 2*(S1 - S2);
-SC = 2*S2 - S1;
-SEg = S0 - S1;
+SA = S0 + S1 - 2*S2;
+SC = 2*S2 - 0.5*(S0+S1);
 
 clear S0;
 
 nbw = length(h);
-out.mseSA = zeros(nbw,1);
-out.mseSC = out.mseSA;
-out.mseSEg = out.mseSA;
+out.mseSASC = zeros(nbw,1);
 for k=1:nbw
 
-    kernmat = createkernmat(lat,long,h(k),true);
-  
+     kernmat = createkernmat(lat,long,h(k),true);
+     
+     
     % approximate GCV using the smoothed covariance matrix:
     tracekernmat = trace(kernmat);
-    denomcovgcv = (1-tracekernmat^2/nVertex^2)^2;
-    
+    denomcovgcv = 2*(1-tracekernmat^2/nVertex^2)^2;
+ 
+   
     smSA_symm = kernmat*SA*kernmat';
     smSC_symm = kernmat*SC*kernmat';
-    smSEg_symm = kernmat*SEg*kernmat';
     
+    % OLD APPROACH:
+%     temp_s1 = (S1 - smSA_symm - smSC_symm).^2;
+%     temp_s2 = (S2 - 0.5*smSA_symm - smSC_symm).^2;
+%     out.mseS1S2(k) = (mean(temp_s1(:))+mean(temp_s2(:)))/denomcovgcv;
+%     if k==1 || out.mseS1S2(k) < min(out.mseS1S2(1:k-1))
+%         out.smSA_symm = smSA_symm;
+%         out.smSC_symm = smSC_symm;
+%     end
+    
+    % Edits 16 December 2016:
     temp_sa = (SA - smSA_symm).^2;
     temp_sc = (SC - smSC_symm).^2;
-    temp_seg = (SEg - smSEg_symm).^2;
-    out.mseSA(k) = mean(temp_sa(:))/denomcovgcv;
-    out.mseSC(k) = mean(temp_sc(:))/denomcovgcv;
-    out.mseSEg(k) = mean(temp_seg(:))/denomcovgcv;
+    out.mseSASC(k) = (mean(temp_sa(:))/2+mean(temp_sc(:))/2)/denomcovgcv;
     
-    if k==1 || out.mseSA(k) < min(out.mseSA(1:k-1))
+    
+    if k==1 || out.mseSASC(k) < min(out.mseSASC(1:k-1))
         out.smSA_symm = smSA_symm;
-    end
-    
-    if k==1 ||out.mseSC(k) < min(out.mseSC(1:k-1))
         out.smSC_symm = smSC_symm;
-    end
-    
-    if k==1 || out.mseSEg(k) < min(out.mseSEg(1:k-1))
-        out.smSEg_symm = smSEg_symm;
     end
 end
 
 out.hvec = h;
-out.hvecmin = zeros(1,3);
 %[~,b] = min(out.mseS1S2);
-[~,b] = min(out.mseSA);
-out.hvecmin(1) = h(b);
-[~,b] = min(out.mseSC);
-out.hvecmin(2) = h(b);
-[~,b] = min(out.mseSEg);
-out.hvecmin(3) = h(b);
-
-out.smSA_symm = (out.smSA_symm+out.smSA_symm')./2;
-out.smSC_symm = (out.smSC_symm+out.smSC_symm')./2;
-out.smSEg_symm = (out.smSEg_symm+out.smSEg_symm')./2;
+[~,b] = min(out.mseSASC);
+out.hvecmin = h(b);
 
 if ~bwonly
     [out.vecSA,out.valSA] = eig_descend(out.smSA_symm);
     [out.vecSC,out.valSC] = eig_descend(out.smSC_symm);
-    [out.vecSEg,out.valSEg] = eig_descend(out.smSEg_symm);
     if outfull
         tindexA = find(out.valSA>tol);
         out.smSA_psd = out.vecSA(:,tindexA)*diag(out.valSA(tindexA))*out.vecSA(:,tindexA)';
         tindexC = find(out.valSC>tol);
         out.smSC_psd = out.vecSC(:,tindexC)*diag(out.valSC(tindexC))*out.vecSC(:,tindexC)';
-        tindexEg = find(out.valSEg>tol);
-        out.smSEg_psd = out.vecSEg(:,tindexEg)*diag(out.valSEg(tindexEg))*out.vecSEg(:,tindexEg)';
-        out.h2_symm = diag(out.smSA_symm)./(diag(out.smSA_symm)+diag(out.smSC_symm) + diag(out.smSEg_symm));
-        out.h2_psd = diag(out.smSA_psd)./(diag(out.smSA_psd)+diag(out.smSC_psd)+diag(out.smSEg_psd));
+        
+        out.h2_symm = diag(out.smSA_symm)./(diag(out.smSA_symm)+diag(out.smSC_symm) + sigmae');
+        out.h2_psd = diag(out.smSA_psd)./(diag(out.smSA_psd)+diag(out.smSC_psd)+sigmae');
     end 
 end
 

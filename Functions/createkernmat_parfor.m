@@ -1,6 +1,4 @@
 function [ kernmat, rowsum, unkernmat ] = createkernmat_parfor(lat,long,h)
-% Benjamin Risk
-% 6 March 2017
 %createkernmat Create smoothing matrix for local constant smoothing
 %Input:
 % lat

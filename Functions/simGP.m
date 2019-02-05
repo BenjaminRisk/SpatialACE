@@ -1,7 +1,7 @@
 function [xmat] = simGP(covmat, rank, n)
 %simGP Simulate a Gaussian Process or degenerate multivariate normal
 %       distribution.
-% Author: Benjamin Risk, 9/15/2015
+%
 %Input:
 %   covmat: M x M covariance matrix
 %   rank: rank of the covariance matrix. This function

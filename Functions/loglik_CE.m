@@ -1,6 +1,4 @@
 function [f] = loglik_CE(paramsN, y, X, MZtp1, MZtp2, DZtp1, DZtp2, MDti)
-% Benjamin Risk
-% Adapted from Shikai Luo's FSEM_lln
 % Computes the -2loglikelihood of the functional SEM formulation of the AE
 % model, i.e., under H0: \sigma_a^2 = 0.
 %

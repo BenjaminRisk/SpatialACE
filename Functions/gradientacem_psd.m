@@ -1,6 +1,4 @@
 function [gradXa,gradXc,gradXe] = gradientacem_psd(Xa,Xc,Xe,smSastar,smScstar,smS0,KJK)
-% Benjamin Risk
-% 6 March 2017
 %INPUT:
 % Xa: V x Ka, where Ka is the rank of sigmaA
 % Xc: V x Kc

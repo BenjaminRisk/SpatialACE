@@ -1,6 +1,4 @@
 function [out] = cv_ROI_mwle_ACE(mleresults, ROI, hvec, lat, long, familyst,useparfor)
-%Benjamin Risk
-%6 March 2017
 %cv_ROI_mwle_ACE Use cross-validation to select a single bandwidth for all
 %vertices specified by the ROI
 %Input:

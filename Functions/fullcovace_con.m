@@ -1,30 +1,17 @@
-function [ output] = fullcovacem_con(R,sigmasqem,dA,dC,dEg,familyst,lat,long,h,maxiter,init,outfull)
-%PURPOSE: Constrained optimization of ACE covariance matrices
-% Note: if convergence problems, adjust lines 114 and/or 131
-%INPUT:
+function [ output] = fullcovace_con(R,sigmasqe,dA,dC,familyst,lat,long,h,maxiter,init,outfull)
+%Constrained optimization of ACE covariance matrices
 % R: N x V residual matrix
-% sigmasqem: estimate measurement error
 % dA: rank of SigmaA
 % dC: rank of SigmaC
-% dEg: rank of SigmaEg
-% familyst structure with .MZtp1, .MZtp2, .DZtp1, .DZtp2, .MDti
-% lat
-% long
-% h bandwidth
-% maxiter	maximum number of iterations of gradient descent 
-% init		initial estimates; structure from fullcovacem_sandwidch
-% outfull output full covariance matrices; if false, outputs basis only; defaults to true
-%
-%OUTPUT:
-% ...
-% .convergence 1 means converged; -1 and -2 produce warning messages
-if nargin < 11
+% 
+
+if nargin < 9
 % initialize from the truncated estimator:
-    init = fullcovacem_sandwich(R,sigmasqem,familyst,lat,long,h);
+    init = fullcovace_sandwich(R,sigmasqe,familyst,lat,long,h);
     %init = fullcovace_br_symm_v2(R,familyst,lat,long,h);
 end
 
-if nargin< 12
+if nargin< 11
     outfull=1;
 end
 
@@ -50,14 +37,6 @@ end
 
 currentA = init.vecSA(:,1:dA)*diag(sqrt(init.valSA(1:dA)));
 currentC = init.vecSC(:,1:dC)*diag(sqrt(init.valSC(1:dC)));
-currentEg = init.vecSEg(:,1:dEg)*diag(sqrt(init.valSEg(1:dEg)));
-
-% NOTE: the same bandwidth is used for all covariance functions.
-% This could be revised in the future
-if length(h)>1
-    h = mean(h);
-    fprintf('\nNote: length of h > 1. Replaced by mean\n');
-end
 
 [~,~,unkernmat] = createkernmat(lat,long,h,false);
 KJK = (unkernmat*ones(nVertex,1))*(ones(1,nVertex)*unkernmat);
@@ -80,12 +59,10 @@ S2 = (R2 + R2')./2/n2;
 clear R21 R22 R2;
 
 S0 = R'*R./N;
-S0 = S0 - diag(sigmasqem);
-
-
+S0 = S0 - diag(sigmasqe);
 
 Sastar = 2*S0+2*S1+S2;
-clear S1;
+clear S0 S1;
 
 Scstar = Sastar+S2;
 clear S2;
@@ -93,11 +70,7 @@ clear S2;
 smSastar = unkernmat*Sastar*unkernmat;
 clear Sastar;
 smScstar = unkernmat*Scstar*unkernmat;
-clear Scstar;
-% Updates for ACEM:
-smS0 = unkernmat*S0*unkernmat;
-clear unkernmat;
-
+clear Scstar unkernmat; 
 %<--------------------------------------   
 
 % for simulations: lambda = 0.0001
@@ -109,65 +82,57 @@ clear unkernmat;
 % 10 January 2017 -- SIGNIFICANT MODIFICATIONS made to algorithm
 %           to speed up convergence
 %lambda = 0.001;
-
-% NOTE: USER CAN ADJUST THESE PARAMETERS DEPENDING ON SCALING OF DATASET
 lambdatol = 1e-9;
  lambda = 0.1;
+%lambda = 0.0005;% if too big, convergence problems
+%lambda = 0.0001;
 
 % algorithm has 4 V x V matrices:
 % Sastar, Scstar, unkernmat, KJK
 t=1;
 propinitgrad = 1;
-[gradA,gradC,gradEg] = gradientacem_psd(currentA,currentC,currentEg,smSastar,smScstar,smS0,KJK);
+[gradA,gradC] = gradient_psd(currentA,currentC,smSastar,smScstar,KJK);
 oldgradA = gradA;
 oldgradC = gradC;
-oldgradEg = gradEg;
 newdeltaA = norm(gradA,'fro'); 
 newdeltaC = norm(gradC,'fro');
-newdeltaEg = norm(gradEg,'fro');
-newnorm = sqrt(newdeltaA^2+newdeltaC^2+newdeltaEg^2);
+newnorm = sqrt(newdeltaA^2+newdeltaC^2);
 initgradientnorm = newnorm;
 %while propinitgrad>0.001 && t<=maxiter
 counter=0;
-while propinitgrad>1e-4 && t<=maxiter && lambda>lambdatol
+while propinitgrad>0.001 && t<=maxiter && lambda>lambdatol
     
     if t>1 && (newnorm >= gradnorm(t-1)) && counter<2
         lambda = lambda/2; 
-        fprintf(['********************\n Norm of gradient increased. \n Decreasing lambda to ' num2str(lambda) '\n ********************\n' ]);
+ %       fprintf(['********************\n Norm of gradient increased. \n Decreasing lambda to ' num2str(lambda) '\n ********************\n' ]);
         currentA = oldA - lambda*oldgradA;
         currentC = oldC - lambda*oldgradC;
-        currentEg = oldEg - lambda*oldgradEg;
 %         [U,D] = svd(currentA);
 %         currentA = U*D;
 %         [U,D] = svd(currentC);
 %     	currentC = U*D;
-        [gradA,gradC,gradEg] = gradientacem_psd(currentA,currentC,currentEg,smSastar,smScstar,smS0,KJK);
+        [gradA,gradC] = gradient_psd(currentA,currentC,smSastar,smScstar,KJK);
         newdeltaA = norm(gradA,'fro'); 
         newdeltaC = norm(gradC,'fro');
-        newdeltaEg = norm(gradEg,'fro');
-        newnorm = sqrt(newdeltaA^2+newdeltaC^2+newdeltaEg^2); 
+        newnorm = sqrt(newdeltaA^2+newdeltaC^2); 
         counter=counter+1; %move after two failures
     else
        % t==1 || newnorm<gradnorm(t-1) || counter>=3
         counter=0;
         gradnorm(t) = newnorm;
         propinitgrad = gradnorm(t)/initgradientnorm;
-%        fprintf(['\nNorm of gradient: ' num2str(gradnorm(t)) '\n']);
+   %    fprintf(['\nNorm of gradient: ' num2str(gradnorm(t)) '\n']);
         t=t+1;
         oldA = currentA;
         oldC = currentC;
-        oldEg = currentEg;
         currentA = oldA - lambda*gradA;
         currentC = oldC - lambda*gradC;
-        currentEg = oldEg - lambda*gradEg;
         oldgradA = gradA;
         oldgradC = gradC;
-        oldgradEg = gradEg;
-        [gradA,gradC,gradEg] = gradientacem_psd(currentA,currentC,currentEg,smSastar,smScstar,smS0,KJK);
+        [gradA,gradC] = gradient_psd(currentA,currentC,smSastar,smScstar,KJK);
         newdeltaA = norm(gradA,'fro'); 
         newdeltaC = norm(gradC,'fro');
-        newdeltaEg = norm(gradEg,'fro');
-        newnorm = sqrt(newdeltaA^2+newdeltaC^2+newdeltaEg^2);
+        newnorm = sqrt(newdeltaA^2+newdeltaC^2);
     end
     
   
@@ -178,9 +143,7 @@ if t>=maxiter
     output.convergence = -1;
 
 elseif lambda<=lambdatol
-    fprintf(['*********\n Warning: did not converge. Current gradient norm: ' num2str(gradnorm(t-1)) '\n'...
-        'Size relative to initial gradient: ' num2str(propinitgrad) '\n'...
-        'If gradient is still large, try increasing dA and dC \n']);
+    fprintf('*********\n Warning: did not converge. Initialize algorithm with smaller lambda');
     output.convergence = -2;
 else
     output.convergence = 1;
@@ -190,12 +153,10 @@ end
 output.gradnorm = gradnorm;
 output.Xa = currentA;
 output.Xc = currentC;
-output.Xeg = currentEg;
 if outfull
     output.smSA_psd = currentA*currentA';
     output.smSC_psd = currentC*currentC';
-    output.smSEg_psd = currentEg*currentEg';
-    output.h2 = diag(output.smSA_psd)./(diag(output.smSA_psd)+diag(output.smSC_psd)+diag(output.smSEg_psd));
+    output.h2 = diag(output.smSA_psd)./(diag(output.smSA_psd)+diag(output.smSC_psd)+sigmasqe');
 end
 end
 

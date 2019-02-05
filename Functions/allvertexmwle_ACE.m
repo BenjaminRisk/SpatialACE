@@ -10,7 +10,7 @@ function [out] = allvertexmwle_ACE(mleresults,h,lat,long,familyst,useparfor)
 if nargin<6
     useparfor = true;
 end
-% TO DO: Add MWLE UNDER NULL THAT GENETIC EFFECTS EQUAL ZERO and INFERENCE
+
 R = mleresults.fixefresid;
 [N,nVertex] = size(R);
 sigmasqA = zeros(1,nVertex);

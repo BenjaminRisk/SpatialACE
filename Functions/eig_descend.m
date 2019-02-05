@@ -1,6 +1,5 @@
 function [eigvec,eigval] = eig_descend(symmat,useeigs)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+%EIGDESCEND 
 %[eigvec,eigval] = eig(symmat,'vector');
 % eig has different behaviors in different versions of matlab!!!
 % argument 'vector' not allowed on cluster in matlab 2013b

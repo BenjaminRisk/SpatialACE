@@ -1,6 +1,4 @@
 function [f] = loglik_ACE(paramsA, y, X, MZtp1, MZtp2, DZtp1, DZtp2, MDti)
-% Benjamin Risk
-% Adapted from Shikai Luo's FSEM_lla 
 % Computes the -2loglikelihood of the functional SEM formulation of the ACE model.
 %
 %Input:

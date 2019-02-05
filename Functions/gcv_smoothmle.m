@@ -1,6 +1,4 @@
 function [out] = gcv_smoothmle(mleresults,familyst,lat,long,hvec,calcblups,useparfor)
-% Benjamin Risk
-% 6 March 2017
 %GCV_SMOOTHMLE:
 %INPUT:
 % mleresults

@@ -1,7 +1,5 @@
 function [sim] = simulatedataACEM(n1,n2,n3,betas,sigmaa,sigmac,sigmaeg,sigmaem)
 %simulatedataACEM
-% Benjamin Risk
-% 6 March 2017
 % Simulate Spatial ACE model with measurement error
 %
 %INPUT:

@@ -1,6 +1,4 @@
 function [ kernmat, rowsum, unkernmat ] = createkernmat(lat,long,h,usesparse)
-% Benjamin Risk
-% 6 march 2017
 %createkernmat Create smoothing matrix for local constant smoothing
 %Input:
 % lat
