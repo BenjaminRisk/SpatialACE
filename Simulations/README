@@ -1,0 +1,8 @@
+The functions are labeled in the order in which they should be run:
+1. a1_Simulations_screeplots_local.m
+2. a2_Simulations_simulateSpatialACEM_cluster.m
+3. a3_Simulations_surfaceplots_tables_local.m
+4. a4_Simulations_boxplots_local.R
+
+Note that programs labeled "local" (i.e., a1, a3, and a4) can be run on a local machine. The file a2_Simulations_simulateSpatialACEM_cluster.m should be run on a cluster; it took 5 hours with 48 logical processors. 
+
